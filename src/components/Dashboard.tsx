@@ -28,8 +28,11 @@ import { ProductDetailTable } from "./DashProductDetailTable";
 import { useState, useEffect } from "react";
 
 // API
-import { fetchTop5Bestsellers } from "../api/dashboard";
-import type { BestSellerItemRaw } from "../types/api/dashboard";
+import { fetchTop5Bestsellers, fetchTop1BestSeller } from "../api/dashboard";
+import type {
+  BestSellerItemRaw,
+  Top1BestSellerItemRaw,
+} from "../types/api/dashboard";
 import type { BestSellerTop5Row, ProductDetailRow } from "../types/dashboard";
 
 interface DashboardProps {
@@ -70,7 +73,7 @@ function CustomTooltip({ activePoint }: any) {
   );
 }
 
-// 현재 연-월 문자열 반환 (예: "2024-06")
+// 현재 연-월 문자열 반환
 function getCurrentMonth(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -101,16 +104,19 @@ export function Dashboard({
   }
 
   function mapProductDetail(raw: BestSellerItemRaw[]): ProductDetailRow[] {
-  return raw.map((item) => ({
-    rank: item.rank,
-    name: item.product_name,
-    sales: item.last_month_sales,
-    prevRank: item.prev_month_rank,
-    rankChange: item.rank_change,
-  }));
-}
+    return raw.map((item) => ({
+      rank: item.rank,
+      name: item.product_name,
+      sales: item.last_month_sales,
+      prevRank: item.prev_month_rank,
+      rankChange: item.rank_change,
+    }));
+  }
 
   const [top5Rows, setTop5Rows] = useState<BestSellerTop5Row[]>([]);
+  const [top1Product, setTop1Product] = useState<Top1BestSellerItemRaw | null>(
+    null
+  );
   const [detailRows, setDetailRows] = useState<ProductDetailRow[]>([]);
   const [loading, setLoading] = useState(true);
   const month = getCurrentMonth();
@@ -146,6 +152,20 @@ export function Dashboard({
     load();
   }, []);
 
+  // [3] 매출 1위 제품 데이터 로드
+  useEffect(() => {
+    async function loadTop1() {
+      try {
+        const res = await fetchTop1BestSeller(month);
+        setTop1Product(res);
+      } catch (e) {
+        console.error("top1 fetch error", e);
+      }
+    }
+
+    loadTop1();
+  }, [month]);
+
   return (
     <div className="dashboard">
       {/* Today Insight */}
@@ -169,7 +189,7 @@ export function Dashboard({
       <section className="dashboard__stats-grid">
         <StatCard
           title="지난 달 총 판매량"
-          value="54,280"
+          value="21,400개"
           change="+12.5%"
           icon={Package}
           trend="up"
@@ -180,7 +200,7 @@ export function Dashboard({
         />
         <StatCard
           title="지난 달 매출액"
-          value="$1.2M"
+          value="$145,242"
           change="+8.3%"
           icon={DollarSign}
           trend="up"
@@ -190,23 +210,21 @@ export function Dashboard({
           isInCart={isInCart}
         />
 
-        <StatCard
-          variant="product"
-          label="이달의 제품"
-          title="Water Sleeping Mask"
-          value="" // 타입 유지용
-          change="" // 타입 유지용
-          trend="up" // 타입 유지용
-          icon={null}
-          imageUrl="https://m.media-amazon.com/images/I/61STtl3UBpL._SX466_.jpg"
-          rating={4.7}
-          reviewCount={3245}
-          change="23%"
-          uniqueKey="stat-product-month-1"
-          addToCart={addToCart}
-          removeByUniqueKey={removeByUniqueKey}
-          isInCart={isInCart}
-        />
+        {top1Product && (
+          <StatCard
+            variant="product"
+            label="지난 달 매출 1위"
+            title={top1Product.title}
+            imageUrl={top1Product.imageUrl}
+            rating={top1Product.rating}
+            reviewCount={top1Product.reviewCount}
+            growth={top1Product.growth}
+            uniqueKey="stat-product-month-1"
+            addToCart={addToCart}
+            removeByUniqueKey={removeByUniqueKey}
+            isInCart={isInCart}
+          />
+        )}
 
         <StatCard
           variant="product"
@@ -361,10 +379,10 @@ interface StatCardProps {
   isInCart: DashboardProps["isInCart"];
 
   /* KPI 카드*/
-  value: string;
-  change: string;
-  icon: any;
-  trend: "up" | "down";
+  value?: string;
+  change?: string;
+  icon?: any;
+  trend?: "up" | "down";
 
   /* Product 카드 */
   imageUrl?: string;
@@ -462,9 +480,9 @@ function StatCard({
       {/* 성장률 */}
       <div className="stat-card__badge-wrapper">
         <div
-          className={`stat-card__badge ${trend === "up" ? "is-up" : "is-down"}`}
+          className={`stat-card__badge ${trend === "up" ? "is-down" : "is-up"}`}
         >
-          {trend === "up" ? "↑" : "↓"} {change} 성장
+          {trend === "up" ? "↓": "↑"} 순위 {growth}
         </div>
       </div>
 

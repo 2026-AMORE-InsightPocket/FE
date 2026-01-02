@@ -61,3 +61,45 @@ function mapProductDetail(
     rankChange: item.rank_change,
   }));
 }
+
+// [3] 매출 1위 제품
+export interface Top1BestSellerItemRaw {
+  rank: number;
+  product_id: number;
+  image_url: string;
+  product_name: string;
+  rating: number;
+  review_count: number;
+  rank_change: number;
+}
+
+export interface Top1BestSellerResponse {
+  month: string;
+  snapshot_time: string;
+  items: Top1BestSellerItemRaw;
+}
+
+function normalizeProductName(name: string): string {
+  return name.split(/[-–:|]/)[0].trim();
+}
+
+export async function fetchTop1BestSeller(month: string) {
+  const res = await fetch(
+    `${API_BASE_URL}/api/dashboard/bestsellers/top1?month=${month}`
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch top1 bestseller");
+  }
+
+  const data = await res.json();
+  const raw = data.item;
+
+  return {
+    title: normalizeProductName(raw.product_name),
+    imageUrl: raw.image_url,
+    rating: raw.rating,
+    reviewCount: raw.review_count,
+    growth: `${raw.rank_change}위 상승`,
+  };
+}
