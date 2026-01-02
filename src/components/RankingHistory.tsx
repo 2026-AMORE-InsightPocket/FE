@@ -214,6 +214,7 @@ export function RankingHistory({
     lipmakeup: { label: "립 메이크업" },
     facepowder: { label: "페이스 파우더" },
   };
+  const tableKey = `ranking-table-amazon-${selectedCategory}`;
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
@@ -301,14 +302,14 @@ export function RankingHistory({
               onAdd={() =>
                 addToCart({
                   type: "table",
-                  title: "실시간 아마존 현재 순위",
+                  title: `아마존 ${categoryConfigs[selectedCategory].label} 베스트셀러 순위`,
                   data: null,
                   page: "ranking",
-                  uniqueKey: "ranking-table-amazon-current",
+                  uniqueKey: tableKey,
                 })
               }
-              onRemove={() => removeByUniqueKey("ranking-table-amazon-current")}
-              isInCart={isInCart("ranking-table-amazon-current")}
+              onRemove={() => removeByUniqueKey(tableKey)}
+              isInCart={isInCart(tableKey)}
             />
           </div>
         </header>
@@ -457,7 +458,9 @@ export function RankingHistory({
         {/* ===== Selected Product Info ===== */}
         <div className="ranking-chart__product-info">
           <h3>{selectedProduct}</h3>
-          <p>{periodConfigs[period].label} {selectedProduct} 순위 변동</p>
+          <p>
+            {periodConfigs[period].label} {selectedProduct} 순위 변동
+          </p>
         </div>
 
         {/* ===== Chart ===== */}
