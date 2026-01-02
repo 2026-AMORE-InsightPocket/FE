@@ -25,7 +25,12 @@ import "../styles/Dashtable.css";
 import insightIcon from "../assets/sparkler.svg";
 import { BestSellerTop5 } from "./DashBestSellerTop5";
 import { ProductDetailTable } from "./DashProductDetailTable";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+// API
+import { fetchTop5Bestsellers } from "../api/dashboard";
+import type { BestSellerItemRaw } from "../types/api/dashboard";
+import type { BestSellerTop5Row } from "../types/dashboard";
 
 interface DashboardProps {
   addToCart: (item: Omit<InsightItem, "id" | "timestamp">) => void;
@@ -65,6 +70,14 @@ function CustomTooltip({ activePoint }: any) {
   );
 }
 
+// 현재 연-월 문자열 반환 (예: "2024-06")
+function getCurrentMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
 export function Dashboard({
   addToCart,
   removeByUniqueKey,
@@ -76,6 +89,33 @@ export function Dashboard({
     label: string;
     value: number;
   } | null>(null);
+
+  function mapTop5(raw: BestSellerItemRaw[]): BestSellerTop5Row[] {
+    return raw.map((item) => ({
+      rank: item.rank,
+      name: item.product_name,
+      sales: item.last_month_sales,
+      rating: item.rating,
+      reviews: item.review_count,
+    }));
+  }
+
+  const [top5Rows, setTop5Rows] = useState<BestSellerTop5Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const month = getCurrentMonth();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetchTop5Bestsellers(month);
+        setTop5Rows(mapTop5(res.items));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
 
   return (
     <div className="dashboard">
@@ -262,6 +302,8 @@ export function Dashboard({
       </div>
 
       <BestSellerTop5
+        data={top5Rows}
+        loading={loading}
         addToCart={addToCart}
         removeByUniqueKey={removeByUniqueKey}
         isInCart={isInCart}
