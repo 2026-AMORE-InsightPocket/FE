@@ -177,9 +177,15 @@ export function RankingHistory({
 
   const chartData = generateRankingData(period, selectedProductData);
 
-  // const categoryKeys = selectedProductData
-  //   ? (Object.keys(selectedProductData.categories) as CategoryType[])
-  //   : [];
+  const filteredRankings =
+    searchTerm.trim() === ""
+      ? rankings
+      : rankings.filter((item) => {
+          const q = searchTerm.trim().toLowerCase();
+          const name = item.product_name.toLowerCase();
+          const brand = item.product_name.split(" ")[0]?.toLowerCase() ?? "";
+          return name.includes(q) || brand.includes(q);
+        });
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -228,6 +234,8 @@ export function RankingHistory({
     setScrollX(next);
   };
 
+  const rankingTableKey = `amazon-ranking-table-${selectedCategory}`;
+
   return (
     <div className="ranking-history">
       {/* ============== 실시간 아마존 현재 순위 ============== */}
@@ -265,7 +273,7 @@ export function RankingHistory({
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-
+            
             <AddToCartButton
               onAdd={() =>
                 addToCart({
@@ -273,11 +281,11 @@ export function RankingHistory({
                   title: `아마존 ${categoryConfigs[selectedCategory].label} 베스트셀러 순위`,
                   data: null,
                   page: "ranking",
-                  uniqueKey: tableKey,
+                  uniqueKey: rankingTableKey,
                 })
               }
-              onRemove={() => removeByUniqueKey(tableKey)}
-              isInCart={isInCart(tableKey)}
+              onRemove={() => removeByUniqueKey(rankingTableKey)}
+              isInCart={isInCart(rankingTableKey)}
             />
           </div>
         </header>
@@ -306,7 +314,7 @@ export function RankingHistory({
                   <td colSpan={5}>로딩 중...</td>
                 </tr>
               ) : (
-                rankings.slice(0, 30).map((item) => (
+                filteredRankings.slice(0, 30).map((item) => (
                   <tr
                     key={item.rank}
                     className={`ranking-table__row ${
@@ -326,7 +334,11 @@ export function RankingHistory({
                     {/* 브랜드 정보 없음 */}
                     <td>{item.product_name.split(" ")[0]}</td>
 
-                    <div className="ranking-product-name">
+                    <div
+                      className={`ranking-product-name ${
+                        item.is_laneige ? "is-laneige" : ""
+                      }`}
+                    >
                       {item.product_name}
                     </div>
 
@@ -338,7 +350,7 @@ export function RankingHistory({
                       )}
                       {item.rank_change < 0 && (
                         <span className="rank-down">
-                          ▼ {Math.abs(item.rank_change)}
+                          ▼ - {Math.abs(item.rank_change)}
                         </span>
                       )}
                       {item.rank_change === 0 && (

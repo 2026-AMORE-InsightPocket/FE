@@ -202,18 +202,19 @@
   padding-left: 24px;
 }
 
-/* 제품명 셀 내부 스크롤 영역 */
 .ranking-product-name {
+  padding: 20px 30px;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
   display: block;
-  /* max-height: 44px;      2줄 */
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  line-height: 1.4;
-  white-space: normal;
-  word-break: break-word;
 }
 
+.ranking-product-name.is-laneige {
+  color: #6691FF;       /* 예: 라네즈 블루 */
+  font-weight: 500;
+}
 
 /* 순위 뱃지 */
 .ranking-badge {
@@ -241,9 +242,6 @@
 
 /* =========================
    이전 순위, 순위 변동
-========================= */
-/* =========================
-   Previous Rank
 ========================= */
 .ranking-table__row--laneige .prev-rank {
   color: #6691FF;
