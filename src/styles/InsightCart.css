@@ -34,7 +34,7 @@
   height: 24px;
   padding: 0 6px;
   border-radius: 12px;
-  background: #FF2F36;
+  background: #ff2f36;
   color: #fff;
   font-size: 12px;
   font-weight: 600;
@@ -91,9 +91,9 @@
 }
 
 .ic-header__close {
- font-size: 22px;
- font-weight: 500;
- margin-bottom: 6px;
+  font-size: 22px;
+  font-weight: 500;
+  margin-bottom: 6px;
 }
 
 /* =========================
@@ -131,9 +131,9 @@
 }
 
 .ic-item.is-selected {
-  border: 1px solid #6691FF;
-  background: #F1F5FF;
-  box-shadow: 0px 2px 5px 0px #8888882E;
+  border: 1px solid #6691ff;
+  background: #f1f5ff;
+  box-shadow: 0px 2px 5px 0px #8888882e;
 }
 
 .ic-item__checkbox {
@@ -155,9 +155,9 @@
 }
 
 .ic-header__title img {
-    width: 24px;
-    height: 24px;
-    display: block;
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .ic-header__title h2 {
@@ -203,7 +203,7 @@
   width: 17px;
   height: 17px;
   border-radius: 5px;
-  border: 1px solid #7A7A7A;
+  border: 1px solid #7a7a7a;
   background: #ffffff;
   display: inline-flex;
   align-items: center;
@@ -306,7 +306,7 @@
   font-size: 17px;
   font-weight: 500;
   cursor: pointer;
-  color: #F6F6F6;
+  color: #f6f6f6;
 
   display: inline-flex;
   align-items: center;
@@ -352,18 +352,65 @@
 .ic-loading {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, #6691ff, #8fb3ff);
-  z-index: 60;
-
+  background: linear-gradient(186.54deg, #ffffff -16.85%, #f1f5ff 105.01%);
+  z-index: 100;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  gap: 16px;
 }
 
 .ic-loading__icon {
-  width: 72px;
-  height: 72px;
-  margin-bottom: 24px;
+  width: 48px;
+  height: 48px;
+  color: #6691ff;
+}
+
+.ic-loading__text {
+  font-size: 16px;
+  color: #6691ff;
+}
+
+.ic-timeout {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ic-timeout__modal {
+  background: #fff;
+  padding: 40px 50px;
+  border-radius: 16px;
+  width: 400px;
+  height: 250px;
+
+  display: flex;                /* 핵심 */
+  flex-direction: column;       /* 위→아래 */
+  align-items: center;          /* 가로 중앙 */
+  justify-content: center;      /* 세로 중앙 */
+
+  text-align: center;
+}
+
+
+.ic-timeout__modal h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.ic-timeout__modal p {
+  font-size: 15px;
+  font-weight: 400;
+  color: #3c3c3c;
+  margin-bottom: 20px;
+}
+
+.ic-btn.ic-btn--primary {
+  width: 100%;
 }

@@ -28,6 +28,7 @@ export function InsightCart({
   onClear,
 }: InsightCartProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isTimeout, setIsTimeout] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   /* =====================
@@ -57,67 +58,84 @@ export function InsightCart({
     if (selectedItems.length === 0) return;
 
     setIsGenerating(true);
-    await new Promise((r) => setTimeout(r, 3500));
+    setIsTimeout(false);
 
-    const wb = XLSX.utils.book_new();
+    await new Promise((r) => setTimeout(r, 3000));
 
-    /* ===== Summary ===== */
-    const summaryData = [
-      ["LANEIGE Amazon Analytics Report"],
-      ["Generated:", new Date().toLocaleString("ko-KR")],
-      ["Total Items:", selectedItems.length],
-      [""],
-      ["Page", "Item Type", "Title", "Added Time"],
-      ...selectedItems.map((item) => [
-        item.page,
-        item.type,
-        item.title,
-        item.timestamp.toLocaleString("ko-KR"),
-      ]),
-    ];
+    const timeoutId = setTimeout(() => {
+      setIsGenerating(false);
+      setIsTimeout(true);
+    }, 15000);
 
-    XLSX.utils.book_append_sheet(
-      wb,
-      XLSX.utils.aoa_to_sheet(summaryData),
-      "Summary"
-    );
+    try {
+      /* ===== Workbook 생성 ===== */
+      const wb = XLSX.utils.book_new();
 
-    /* ===== Item Sheets ===== */
-    selectedItems.forEach((item, idx) => {
-      let data: any[][] = [];
-
-      if (item.type === "stat") {
-        data = [
-          [item.title],
-          ["Value", item.data.value],
-          ["Change", item.data.change],
-          ["Trend", item.data.trend],
-        ];
-      } else if (item.type === "chart") {
-        data = [
-          [item.title],
-          [],
-          Object.keys(item.data[0]),
-          ...item.data.map(Object.values),
-        ];
-      } else if (item.type === "table") {
-        data = [[item.title], [], ...item.data];
-      } else if (item.type === "insight") {
-        data = [[item.title], [], [item.data]];
-      }
+      /* ===== Summary ===== */
+      const summaryData = [
+        ["LANEIGE Amazon Analytics Report"],
+        ["Generated:", new Date().toLocaleString("ko-KR")],
+        ["Total Items:", selectedItems.length],
+        [""],
+        ["Page", "Item Type", "Title", "Added Time"],
+        ...selectedItems.map((item) => [
+          item.page,
+          item.type,
+          item.title,
+          item.timestamp.toLocaleString("ko-KR"),
+        ]),
+      ];
 
       XLSX.utils.book_append_sheet(
         wb,
-        XLSX.utils.aoa_to_sheet(data),
-        `Item_${idx + 1}`
+        XLSX.utils.aoa_to_sheet(summaryData),
+        "Summary"
       );
-    });
 
-    XLSX.writeFile(wb, `LANEIGE_Insights_${Date.now()}.xlsx`);
+      /* ===== Item Sheets ===== */
+      selectedItems.forEach((item, idx) => {
+        let data: any[][] = [];
 
-    setIsGenerating(false);
-    setSelectedIds([]);
-    onClear();
+        if (item.type === "stat") {
+          data = [
+            [item.title],
+            ["Value", item.data.value],
+            ["Change", item.data.change],
+            ["Trend", item.data.trend],
+          ];
+        } else if (item.type === "chart") {
+          data = [
+            [item.title],
+            [],
+            Object.keys(item.data[0]),
+            ...item.data.map(Object.values),
+          ];
+        } else if (item.type === "table") {
+          data = [[item.title], [], ...item.data];
+        } else if (item.type === "insight") {
+          data = [[item.title], [], [item.data]];
+        }
+
+        XLSX.utils.book_append_sheet(
+          wb,
+          XLSX.utils.aoa_to_sheet(data),
+          `Item_${idx + 1}`
+        );
+      });
+
+      /* ===== 파일 저장 ===== */
+      XLSX.writeFile(wb, `LANEIGE_Insights_${Date.now()}.xlsx`);
+
+      clearTimeout(timeoutId);
+
+      setIsGenerating(false);
+      setSelectedIds([]);
+      onClear();
+    } catch (e) {
+      clearTimeout(timeoutId);
+      setIsGenerating(false);
+      setIsTimeout(true);
+    }
   };
 
   return (
@@ -241,6 +259,35 @@ export function InsightCart({
       </AnimatePresence>
 
       <InsightCartLoading visible={isGenerating} />
+      <AnimatePresence>
+        {isTimeout && (
+          <motion.div
+            className="ic-timeout"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="ic-timeout__modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+            >
+              <h3>앗! 보고서가 만들어지지 않았어요</h3>
+              <p>다시 시도해 주세요.</p>
+
+              <button
+                className="ic-btn ic-btn--primary"
+                onClick={() => {
+                  setIsTimeout(false);
+                  onToggle(); // drawer 닫기
+                }}
+              >
+                메인으로 돌아가기
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
