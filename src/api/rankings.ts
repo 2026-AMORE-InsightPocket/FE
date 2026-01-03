@@ -200,8 +200,35 @@ export function mapRankTrendsToChartData(
 
 
 // AI 채팅 전달용 함수
+export function normalizeRankTrendApiToAI(data: {
+  product_name: string;
+  style?: string;
+  range: string;
+  items: {
+    bucket: string;
+    rank1?: number | null;
+    rank1_category?: string | null;
+    rank2?: number | null;
+    rank2_category?: string | null;
+  }[];
+}) {
+  return {
+    product_name: data.product_name,
+    style: data.style,
+    range: data.range,
+    items: data.items.map((item) => ({
+      date: item.bucket,
+      overallRank: item.rank1 ?? undefined,
+      overallCategory: item.rank1_category ?? undefined,
+      categoryRank: item.rank2 ?? undefined,
+      categoryCategory: item.rank2_category ?? undefined,
+    })),
+  };
+}
+
 export function mapRankingHistoryToAILines(data: {
   product_name: string;
+  style?: string;
   range: string;
   items: {
     date: string;
@@ -214,21 +241,22 @@ export function mapRankingHistoryToAILines(data: {
   const lines: string[] = [];
 
   lines.push(`product_name: ${data.product_name}`);
+
+  if (data.style) {
+    lines.push(`style: ${data.style}`);
+  }
+
   lines.push(`range: ${data.range}`);
 
   data.items.forEach((item) => {
     const parts: string[] = [];
 
     if (item.overallRank != null) {
-      parts.push(
-        `overall ${item.overallRank} (${item.overallCategory})`
-      );
+      parts.push(`overall ${item.overallRank} (${item.overallCategory})`);
     }
 
     if (item.categoryRank != null) {
-      parts.push(
-        `category ${item.categoryRank} (${item.categoryCategory})`
-      );
+      parts.push(`category ${item.categoryRank} (${item.categoryCategory})`);
     }
 
     if (parts.length === 0) {
@@ -240,3 +268,4 @@ export function mapRankingHistoryToAILines(data: {
 
   return lines;
 }
+

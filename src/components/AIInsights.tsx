@@ -14,6 +14,7 @@ import {
   mapCurrentRankingToAILines,
   fetchProductRankTrends,
   mapRankingHistoryToAILines,
+  normalizeRankTrendApiToAI,
   AMAZON_CATEGORY_ID_MAP,
 } from "../api/rankings";
 
@@ -274,20 +275,25 @@ export function AIInsights({ cartItems }: { cartItems: InsightItem[] }) {
       title: item.title,
       page: "ranking",
       type: "chart",
-
       fetchContext: async () => {
-        const { productId, range } = item.meta;
+        const meta = item.meta as any;
 
-        // 서버에서 최신 데이터 다시 조회
+        const productId = meta?.productId; // ✅ 여기서 정의
+        const range = meta?.range; // ✅ WEEK/MONTH/YEAR
+
+        if (!productId || !range) {
+          console.error("[AI chart meta missing]", { meta, item });
+          return [
+            `error: meta missing`,
+            `productId: ${String(productId)}`,
+            `range: ${String(range)}`,
+          ];
+        }
+
         const res = await fetchProductRankTrends(productId, range);
-        console.log("[AI rank trends raw response]", res);
 
-        // AI용 lines 변환
-        return mapRankingTrendToAILines({
-          productName: res.productName, // 또는 별도 productName 저장
-          range,
-          items: Array.isArray(res) ? res : res.items,
-        });
+        const normalized = normalizeRankTrendApiToAI(res);
+        return mapRankingHistoryToAILines(normalized);
       },
     }));
 
