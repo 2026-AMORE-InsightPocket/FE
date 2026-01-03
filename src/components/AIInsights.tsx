@@ -12,6 +12,8 @@ import {
 import {
   fetchCurrentRanking,
   mapCurrentRankingToAILines,
+  fetchProductRankTrends,
+  mapRankingHistoryToAILines,
   AMAZON_CATEGORY_ID_MAP,
 } from "../api/rankings";
 
@@ -46,6 +48,7 @@ type ChatMessageForAPI = {
 
 /* ================= Static Data ================= */
 
+// 추천 질문
 const suggestedQuestions = [
   "이번 달 매출 트렌드를 분석해주세요.",
   "Water Sleeping Mask의 아마존 순위 변동을 알려주세요.",
@@ -53,6 +56,7 @@ const suggestedQuestions = [
   "다음 분기 전략을 제안해 주세요.",
 ];
 
+// 아마존 베스트셀러 카테고리 매핑
 const AMAZON_CATEGORIES = {
   all_beauty: "전체",
   lip_care: "립 케어",
@@ -62,6 +66,7 @@ const AMAZON_CATEGORIES = {
 } as const;
 export type AmazonCategory = keyof typeof AMAZON_CATEGORIES;
 
+// 아마존 베스트셀러 순위 관련 포맷
 const categoryBestsellerData: AISelectableData[] = (
   Object.entries(AMAZON_CATEGORIES) as [AmazonCategory, string][]
 ).map(([category, label]) => ({
@@ -79,6 +84,7 @@ const categoryBestsellerData: AISelectableData[] = (
   },
 }));
 
+// 모달창 선택 데이터
 const allAvailableData: AISelectableData[] = [
   {
     id: "dashboard-stat-sales",
@@ -103,7 +109,8 @@ const allAvailableData: AISelectableData[] = [
     type: "stat",
     fetchContext: async () => {
       const month = getCurrentYearMonth();
-      await fetchTop1BestSellerAIContext(month);
+      const res = await fetchTop1BestSellerAIContext(month);
+      return res;
     },
   },
   {
@@ -113,7 +120,8 @@ const allAvailableData: AISelectableData[] = [
     type: "stat",
     fetchContext: async () => {
       const month = getCurrentYearMonth();
-      await fetchRisingProductItemAIContext(month);
+      const res = await fetchRisingProductItemAIContext(month);
+      return res;
     },
   },
   {
@@ -160,11 +168,15 @@ async function callChatAPI(payload: { messages: ChatMessageForAPI[] }) {
 }
 
 function normalizeContextToLines(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
   if (typeof value === "string") {
     return value.split("\n").filter(Boolean);
   }
 
-  if (typeof value === "object") {
+  if (typeof value === "object" && value !== null) {
     return Object.entries(value).map(([key, val]) => `${key}: ${val}`);
   }
 
@@ -196,6 +208,10 @@ function normalizeAITitle(title: string): string {
 
 // title 정제 분기 함수
 function getAITitle(item: AISelectableData): string {
+  if (item.page === "ranking" && item.title.includes("순위 추이")) {
+    return "제품 순위 변동 추이";
+  }
+
   if (item.page === "ranking" && item.title.includes("베스트셀러 순위")) {
     return normalizeAITitle(item.title);
   }
@@ -204,9 +220,79 @@ function getAITitle(item: AISelectableData): string {
   return item.title;
 }
 
+// 제품 순위 데이터 정제 함수
+function mapRankingTrendToAILines(params: {
+  productName: string;
+  range: string;
+  items?: any[];
+}): string[] {
+  const { productName, range, items } = params;
+
+  const lines: string[] = [];
+  lines.push(`product_name: ${productName}`);
+  lines.push(`range: ${range}`);
+
+  if (!Array.isArray(items) || items.length === 0) {
+    lines.push("⚠️ 순위 데이터가 없습니다");
+    return lines;
+  }
+
+  items.forEach((item) => {
+    const date = item.bucket ?? item.date ?? "unknown_date";
+
+    const hasOverall = item.rank1 != null;
+    const hasCategory = item.rank2 != null;
+
+    if (!hasOverall && !hasCategory) {
+      lines.push(`${date}: rank 없음`);
+      return;
+    }
+
+    const parts: string[] = [];
+
+    if (hasOverall) {
+      parts.push(`overall ${item.rank1} (${item.rank1_category})`);
+    }
+
+    if (hasCategory) {
+      parts.push(`category ${item.rank2} (${item.rank2_category})`);
+    }
+
+    lines.push(`${date}: ${parts.join(", ")}`);
+  });
+
+  return lines;
+}
+
 /* ================= Component ================= */
 
 export function AIInsights({ cartItems }: { cartItems: InsightItem[] }) {
+  const pocketChartData: AISelectableData[] = cartItems
+    .filter((item) => item.type === "chart" && item.page === "ranking")
+    .map((item) => ({
+      id: item.uniqueKey,
+      title: item.title,
+      page: "ranking",
+      type: "chart",
+
+      fetchContext: async () => {
+        const { productId, range } = item.meta;
+
+        // 서버에서 최신 데이터 다시 조회
+        const res = await fetchProductRankTrends(productId, range);
+        console.log("[AI rank trends raw response]", res);
+
+        // AI용 lines 변환
+        return mapRankingTrendToAILines({
+          productName: res.productName, // 또는 별도 productName 저장
+          range,
+          items: Array.isArray(res) ? res : res.items,
+        });
+      },
+    }));
+
+  const aiSelectableData = [...allAvailableData, ...pocketChartData];
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
@@ -240,7 +326,7 @@ export function AIInsights({ cartItems }: { cartItems: InsightItem[] }) {
 
     // 선택된 데이터: id -> title (UI 태그용)
     const attachedDataTitles = selectedData.map((id) => {
-      const item = allAvailableData.find((d) => d.id === id);
+      const item = aiSelectableData.find((d) => d.id === id);
       return item?.title || id;
     });
 
@@ -265,7 +351,7 @@ export function AIInsights({ cartItems }: { cartItems: InsightItem[] }) {
 
       const attachedDataForAPI: AttachedDataBlock[] = await Promise.all(
         selectedData.map(async (id) => {
-          const item = allAvailableData.find((d) => d.id === id);
+          const item = aiSelectableData.find((d) => d.id === id);
           if (!item) return null;
 
           const raw = await item.fetchContext();
@@ -339,11 +425,13 @@ export function AIInsights({ cartItems }: { cartItems: InsightItem[] }) {
   };
 
   const cartDataIds = cartItems.map((item) => item.uniqueKey);
-  const pocketData = allAvailableData.filter((d) => cartDataIds.includes(d.id));
-  const otherData = allAvailableData.filter((d) => !cartDataIds.includes(d.id));
+
+  const pocketData = aiSelectableData.filter((d) => cartDataIds.includes(d.id));
+
+  const otherData = aiSelectableData.filter((d) => !cartDataIds.includes(d.id));
 
   const selectedDataItems = selectedData
-    .map((id) => allAvailableData.find((d) => d.id === id))
+    .map((id) => aiSelectableData.find((d) => d.id === id))
     .filter(Boolean);
 
   /* ================= Render ================= */

@@ -197,3 +197,46 @@ export function mapRankTrendsToChartData(
     categoryCategory: item.rank2_category ?? undefined,
   }));
 }
+
+
+// AI 채팅 전달용 함수
+export function mapRankingHistoryToAILines(data: {
+  product_name: string;
+  range: string;
+  items: {
+    date: string;
+    overallRank?: number;
+    overallCategory?: string;
+    categoryRank?: number;
+    categoryCategory?: string;
+  }[];
+}): string[] {
+  const lines: string[] = [];
+
+  lines.push(`product_name: ${data.product_name}`);
+  lines.push(`range: ${data.range}`);
+
+  data.items.forEach((item) => {
+    const parts: string[] = [];
+
+    if (item.overallRank != null) {
+      parts.push(
+        `overall ${item.overallRank} (${item.overallCategory})`
+      );
+    }
+
+    if (item.categoryRank != null) {
+      parts.push(
+        `category ${item.categoryRank} (${item.categoryCategory})`
+      );
+    }
+
+    if (parts.length === 0) {
+      lines.push(`${item.date}: rank 없음`);
+    } else {
+      lines.push(`${item.date}: ${parts.join(", ")}`);
+    }
+  });
+
+  return lines;
+}
