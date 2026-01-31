@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "../styles/ReviewAnalysis.css";
 import { AddToCartButton } from "./AddToCartButton";
 import { Search, ChevronLeft, ChevronRight, ThumbsUp, ThumbsDown, BadgeAlert } from "lucide-react";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { fetchCurrentProducts, LaneigeProductUI } from "../api/rankings";
 
 interface ReviewAnalysisProps {
   addToCart: (item: any) => void;
@@ -9,11 +11,7 @@ interface ReviewAnalysisProps {
   isInCart: (uniqueKey: string) => boolean;
 }
 
-interface Product {
-  id: number;
-  name: string;
-  image: string;
-}
+// Product data comes from API as `LaneigeProductUI`
 
 interface Insight {
   id: string;
@@ -31,14 +29,11 @@ export function ReviewAnalysis({
 }: ReviewAnalysisProps) {
   const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
 
-  const products: Product[] = [
-    { id: 12, name: "Water Sleeping Mask", image: "" },
-    { id: 23, name: "Cream Skin Refiner", image: "" },
-    { id: 8, name: "Lip Sleeping Mask", image: "" },
-    { id: 5, name: "Water Bank Moisture Cream", image: "" },
-    { id: 45, name: "Neo Cushion", image: "" },
-    { id: 87, name: "Glowy Makeup Serum", image: "" },
-  ];
+  const [products, setProducts] = useState<LaneigeProductUI[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
+  const [scrollX, setScrollX] = useState(0);
 
   const sentimentData = {
     positive: 68,
@@ -105,6 +100,46 @@ export function ReviewAnalysis({
     }
   };
 
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        setLoadingProducts(true);
+        const res = await fetchCurrentProducts();
+        setProducts(res.items);
+      } catch (e) {
+        console.error("Failed to load products", e);
+        setProducts([]);
+      } finally {
+        setLoadingProducts(false);
+      }
+    }
+
+    loadProducts();
+  }, []);
+
+  useEffect(() => {
+    if (products.length > 0 && selectedProduct == null) {
+      setSelectedProduct(products[0].productId);
+    }
+  }, [products, selectedProduct]);
+
+  const filteredProducts =
+    productSearchTerm.trim() === ""
+      ? products
+      : products.filter((p) =>
+          p.name.toLowerCase().includes(productSearchTerm.trim().toLowerCase())
+        );
+
+  const handleScroll = (dir: "left" | "right") => {
+    const el = document.getElementById("review-product-scroll");
+    if (!el) return;
+
+    const delta = dir === "left" ? -300 : 300;
+    const next = Math.max(0, scrollX + delta);
+    el.scrollTo({ left: next, behavior: "smooth" });
+    setScrollX(next);
+  };
+
   const getIconBg = (type: string) => {
     switch (type) {
       case "positive":
@@ -143,44 +178,53 @@ export function ReviewAnalysis({
           </div>
 
           <div className="product-selection__search">
-            <svg
-              className="search-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle cx="11" cy="11" r="7" stroke="#999" strokeWidth="1.5" />
-              <path
-                d="M20 20L17 17"
-                stroke="#999"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
+            <Search className="search-icon" />
             <input
               type="text"
               placeholder="제품명 검색"
               className="product-selection__search-input"
+              value={productSearchTerm}
+              onChange={(e) => setProductSearchTerm(e.target.value)}
             />
           </div>
 
           <div className="product-carousel">
-            <button className="scroll-btn scroll-btn--left">
+            <button
+              className="scroll-btn scroll-btn--left"
+              onClick={() => handleScroll("left")}
+            >
               <ChevronLeft />
             </button>
-            <div className="product-carousel__items">
-              {products.map((product) => (
-                <div key={product.id} className="product-card">
-                  <div className="product-card__badge">#{product.id}</div>
-                  <div className="product-card__image">
-                    <img src={product.image} alt={product.name} />
-                  </div>
-                  <p className="product-card__name">{product.name}</p>
-                </div>
-              ))}
+            <div id="review-product-scroll" className="product-carousel__items">
+              {loadingProducts ? (
+                <div className="product-loading">로딩 중...</div>
+              ) : (
+                filteredProducts.map((product) => (
+                  <button
+                    key={product.productId}
+                    className={`product-card ${
+                      selectedProduct === product.productId ? "product-card--active" : ""
+                    }`}
+                    onClick={() => setSelectedProduct(product.productId)}
+                  >
+                    <div className={`product-card__badge ${selectedProduct === product.productId ? "product-card__badge--active" : ""}`}>#{product.productId}</div>
+                    <div className="product-card__image">
+                      <ImageWithFallback
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fallbackSrc="https://via.placeholder.com/150"
+                      />
+                    </div>
+                    <p className="product-card__name">{product.name}</p>
+                    <p className="product-card__style">{product.style}</p>
+                  </button>
+                ))
+              )}
             </div>
-            <button className="scroll-btn scroll-btn--right">
+            <button
+              className="scroll-btn scroll-btn--right"
+              onClick={() => handleScroll("right")}
+            >
               <ChevronRight />
             </button>
           </div>
