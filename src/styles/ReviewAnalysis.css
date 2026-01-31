@@ -201,7 +201,7 @@
 }
 
 .customer-feedback__quote {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
   color: #383838;
   line-height: 1.6;
@@ -209,7 +209,7 @@
   font-style: normal;
   background-color: #f6f6f6;
   border-radius: 50px;
-  padding: 15px 30px;
+  padding: 30px 30px;
 }
 
 /* ========== 감정 분석 섹션 ========== */

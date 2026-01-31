@@ -4,14 +4,13 @@ import { AddToCartButton } from "./AddToCartButton";
 import { Search, ChevronLeft, ChevronRight, ThumbsUp, ThumbsDown, BadgeAlert } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { fetchCurrentProducts, LaneigeProductUI } from "../api/rankings";
+import { fetchProductReviewAnalysis } from "../api/reviews";
 
 interface ReviewAnalysisProps {
   addToCart: (item: any) => void;
   removeByUniqueKey: (uniqueKey: string) => void;
   isInCart: (uniqueKey: string) => boolean;
 }
-
-// Product data comes from API as `LaneigeProductUI`
 
 interface Insight {
   id: string;
@@ -34,58 +33,33 @@ export function ReviewAnalysis({
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
   const [scrollX, setScrollX] = useState(0);
+  const [reviewAnalysis, setReviewAnalysis] = useState<any | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
-  const sentimentData = {
-    positive: 68,
-    negative: 32,
-  };
+  const sentimentData = reviewAnalysis
+    ? {
+        positive: reviewAnalysis.sentiment.positive_pct,
+        negative: reviewAnalysis.sentiment.negative_pct,
+      }
+    : { positive: 0, negative: 0 };
 
-  const ratingDistribution = [
-    { stars: 5, percentage: 66 },
-    { stars: 4, percentage: 21 },
-    { stars: 3, percentage: 12 },
-    { stars: 2, percentage: 7 },
-    { stars: 1, percentage: 2 },
-  ];
+  const ratingDistribution = reviewAnalysis
+    ? reviewAnalysis.rating_distribution.map((r: any) => ({
+        stars: r.star,
+        percentage: r.pct,
+      }))
+    : [];
 
-  const insights: Insight[] = [
-    {
-      id: "1",
-      title: "보습 (Hydration)",
-      mentions: 2094,
-      score: 85,
-      type: "positive",
-      aiAnalysis:
-        '2,094명의 고객이 언급하며 80% 이상의 양성 피드백을 보임. 특히 "밤 사이 일어나는 극강의 촉촉함"이 핵심 구매 결정 요인으로 분석됨.',
-    },
-    {
-      id: "2",
-      title: "흡수력 (Absorption)",
-      mentions: 1842,
-      score: 78,
-      type: "positive",
-      aiAnalysis:
-        '빠른 흡수력과 가벼운 텍스처가 주요 긍정 요인. "끈적임 없이 촉촉하다"는 평가가 지배적.',
-    },
-    {
-      id: "3",
-      title: "사용 편의성",
-      mentions: 1289,
-      score: 42,
-      type: "negative",
-      aiAnalysis:
-        '스패출러 사용의 번거로움과 제형의 끈적임이 부정 평가의 주원인. 낮 시간대보다는 "나이트 케어 전용" 메시지를 강화하여 끈적임에 대한 거부감을 상쇄시킬 것을 제안.',
-    },
-    {
-      id: "4",
-      title: "용량 (Quantity)",
-      mentions: 987,
-      score: 58,
-      type: "neutral",
-      aiAnalysis:
-        "용량 대비 가격에 대한 양가적 반응. 더 큰 사이즈 옵션 출시 고려 필요.",
-    },
-  ];
+  const insights: Insight[] = reviewAnalysis
+    ? reviewAnalysis.keyword_insights.map((k: any, idx: number) => ({
+        id: String(idx),
+        title: k.aspect_name,
+        mentions: k.mention_total,
+        score: k.score,
+        type: k.score >= 70 ? "positive" : k.score <= 40 ? "negative" : "neutral",
+        aiAnalysis: k.summary,
+      }))
+    : [];
 
   const getIconColor = (type: string) => {
     switch (type) {
@@ -152,6 +126,25 @@ export function ReviewAnalysis({
         return "#CCFFE1";
     }
   };
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+
+    async function loadReviewAnalysis() {
+      try {
+        setReviewLoading(true);
+        const res = await fetchProductReviewAnalysis(selectedProduct);
+        setReviewAnalysis(res);
+      } catch (e) {
+        console.error("Failed to load review analysis", e);
+        setReviewAnalysis(null);
+      } finally {
+        setReviewLoading(false);
+      }
+    }
+
+    loadReviewAnalysis();
+  }, [selectedProduct]);
 
   return (
     <div className="review-analysis">
@@ -235,17 +228,17 @@ export function ReviewAnalysis({
           <div className="section-header-row">
             <h3 className="customer-feedback__title">
               <span className="highlight">고객들이 말합니다</span>
-              <span className="count">전체 3,245개 리뷰 분석</span>
+              <span className="count">{reviewAnalysis ? `전체 ${reviewAnalysis.reputation.review_count.toLocaleString()}개 리뷰 분석` : "전체 -개 리뷰"}</span>
             </h3>
             <AddToCartButton
               onAdd={() =>
-                addToCart({
-                  type: "feedback-summary",
-                  title: "고객들이 말합니다 (리뷰 요약)",
-                  data: { count: 3245, rating: 68 },
-                  page: "review",
-                  uniqueKey: "review-customer-feedback",
-                })
+                  addToCart({
+                    type: "feedback-summary",
+                    title: "고객들이 말합니다 (리뷰 요약)",
+                    data: reviewAnalysis ? { count: reviewAnalysis.reputation.review_count, rating: reviewAnalysis.reputation.rating } : null,
+                    page: "review",
+                    uniqueKey: "review-customer-feedback",
+                  })
               }
               onRemove={() => removeByUniqueKey("review-customer-feedback")}
               isInCart={isInCart("review-customer-feedback")}
@@ -253,7 +246,7 @@ export function ReviewAnalysis({
           </div>
           <div className="customer-feedback__rating">
             <span className="rating-label">긍정 반응</span>
-            <span className="rating-value">68%</span>
+            <span className="rating-value">{reviewAnalysis ? `${sentimentData.positive}%` : "-"}</span>
             <div className="rating-stars">
               <span className="star star--filled">★</span>
               <span className="star star--filled">★</span>
@@ -263,8 +256,7 @@ export function ReviewAnalysis({
             </div>
           </div>
           <blockquote className="customer-feedback__quote">
-            "밤새 촉촉함이 지속되는 마법 같은 제품! 아침에 일어나면 피부가 맑게
-            빛나요~!"
+            {reviewLoading ? "로딩 중..." : reviewAnalysis ? `"${reviewAnalysis.customers_say.current_text}"` : "-"}
           </blockquote>
         </div>
 
@@ -280,7 +272,7 @@ export function ReviewAnalysis({
                       addToCart({
                         type: "chart",
                         title: "감정 분석 분포",
-                        data: sentimentData,
+                        data: reviewAnalysis ? reviewAnalysis.sentiment : null,
                         page: "review",
                         uniqueKey: "review-sentiment-distribution",
                       })
@@ -369,7 +361,7 @@ export function ReviewAnalysis({
                       addToCart({
                         type: "stat",
                         title: "평점 지수",
-                        data: { score: 94, rating: 4.7 },
+                        data: reviewAnalysis ? { score: reviewAnalysis.reputation.score, rating: reviewAnalysis.reputation.rating } : null,
                         page: "review",
                         uniqueKey: "review-rating-index",
                       })
@@ -403,7 +395,7 @@ export function ReviewAnalysis({
                     />
                   </svg>
                   <div className="score-content">
-                    <div className="score-number">94</div>
+                    <div className="score-number">{reviewAnalysis ? reviewAnalysis.reputation.score : "-"}</div>
                     <div className="score-label">신뢰도 점수</div>
                   </div>
                 </div>
@@ -413,9 +405,9 @@ export function ReviewAnalysis({
                   <span className="star star--filled">★</span>
                   <span className="star star--filled">★</span>
                   <span className="star star--half">★</span>
-                  <span className="rating-number">4.7</span>
+                  <span className="rating-number">{reviewAnalysis ? reviewAnalysis.reputation.rating.toFixed(1) : "-"}</span>
                 </div>
-                <div className="review-count">3,245개 리뷰</div>
+                <div className="review-count">{reviewAnalysis ? `${reviewAnalysis.reputation.review_count.toLocaleString()}개 리뷰` : "-"}</div>
               </div>
             </div>
           </div>
@@ -429,7 +421,7 @@ export function ReviewAnalysis({
                   addToCart({
                     type: "chart",
                     title: "평점 분포",
-                    data: ratingDistribution,
+                    data: reviewAnalysis ? reviewAnalysis.rating_distribution : null,
                     page: "review",
                     uniqueKey: "review-rating-distribution",
                   })
@@ -474,7 +466,7 @@ export function ReviewAnalysis({
                   addToCart({
                     type: "insight-list",
                     title: "AI 키워드 분석 및 비즈니스 인사이트",
-                    data: insights,
+                    data: reviewAnalysis ? reviewAnalysis.keyword_insights : null,
                     page: "review",
                     uniqueKey: "review-ai-insights",
                   })
