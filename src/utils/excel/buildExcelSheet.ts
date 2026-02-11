@@ -111,6 +111,37 @@ export async function buildExcelSheetData(
             ];
         }
 
+        case "keyword-category-distribution": {
+            const obj = item.data ?? {};
+            const entries = Object.entries(obj);
+
+            return [
+                ["카테고리별 키워드 분포"],
+                [],
+                ["카테고리", "언급 수"],
+                ...entries.map(([category, value]) => [category, value]),
+            ];
+        }
+
+        case "keyword-rankings-table": {
+            const rows = Array.isArray(item.data) ? item.data : [];
+
+            return [
+                ["키워드 순위"],
+                [],
+                ["순위", "키워드", "언급 수", "트렌드", "변화율", "감정", "카테고리"],
+                ...rows.map((r: any) => [
+                r?.rank ?? "-",
+                r?.keyword ?? "-",
+                r?.mentions ?? "-",
+                r?.trend ?? "-",
+                typeof r?.change === "number" ? `${r.change}%` : "-",
+                r?.sentiment ?? "-",
+                r?.category ?? "-",
+                ]),
+            ];
+        }
+
         default:
             return [[item.title], ["지원하지 않는 카드", kind]];
   
