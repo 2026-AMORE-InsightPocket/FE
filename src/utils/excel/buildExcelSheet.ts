@@ -198,6 +198,73 @@ export async function buildExcelSheetData(
             ];
         }
 
+        case "review-customer-feedback": {
+            const data = item.data ?? {};
+
+            return [
+                [item.title],
+                [],
+                ["긍정 반응 비율", data?.positive_pct != null ? `${data.positive_pct}%` : "-"],
+                [],
+                ["고객 리뷰 요약"],
+                [data?.customers_say ?? "-"],
+            ];
+        }
+
+        case "review-sentiment-distribution": {
+            const data = item.data ?? {};
+
+            return [
+                [item.title],
+                [],
+                ["구분", "비율(%)"],
+                ["긍정", data?.positive_pct ?? "-"],
+                ["부정", data?.negative_pct ?? "-"],
+            ];
+        }
+
+        case "review-rating-index": {
+            const data = item.data ?? {};
+
+            return [
+                [item.title],
+                [],
+                ["신뢰도 점수", data?.score ?? "-"],
+                ["평점", data?.rating ?? "-"],
+                ["리뷰 개수", data?.review_count?.toLocaleString() ?? "-"],
+            ];
+        }
+
+        case "review-rating-distribution": {
+            const rows = Array.isArray(item.data) ? item.data : [];
+
+            return [
+                [item.title],
+                [],
+                ["별점", "비율(%)"],
+                ...rows.map((r: any) => [
+                `${r.star}점`,
+                r.pct ?? "-",
+                ]),
+            ];
+        }
+
+        case "review-ai-insights": {
+            const rows = Array.isArray(item.data) ? item.data : [];
+
+            return [
+                [item.title],
+                [],
+                ["키워드", "언급 수", "점수", "AI 해석"],
+                ...rows.map((r: any) => [
+                r?.aspect_name ?? "-",
+                r?.mention_total ?? "-",
+                r?.score ?? "-",
+                r?.summary ?? "-",
+                ]),
+            ];
+        }
+
         case "keyword-category-distribution": {
             const obj = item.data ?? {};
             const entries = Object.entries(obj);
