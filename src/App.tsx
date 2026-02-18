@@ -11,8 +11,16 @@ import { MiniChatWindow } from './components/MiniChatWindow';
 import { AnimatePresence } from 'motion/react';
 import type { CategoryCode } from "./components/RankingHistory";
 import type { RankRange } from "./components/RankingHistory";
+import type { ChatMessage } from "./types/chat";
 
 const CART_STORAGE_KEY = "insight-pocket-cart-v1";
+const INITIAL_CHAT_MESSAGE: ChatMessage = {
+  id: "init",
+  role: "assistant",
+  content:
+    "안녕하세요! LANEIGE 데이터 분석 AI 어시스턴트입니다. \n왼쪽 + 버튼을 클릭하여 분석할 데이터를 선택하거나, 바로 질문해 주세요.",
+  timestamp: new Date(),
+};
 
 export type PageType = 'dashboard' | 'ranking' | 'review-analysis' | 'ai-insights' | 'keywords';
 
@@ -68,6 +76,9 @@ export default function App() {
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMiniChatOpen, setIsMiniChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    INITIAL_CHAT_MESSAGE,
+  ]);
 
   const addToCart = (item: Omit<InsightItem, 'id' | 'timestamp'>) => {
     const newItem: InsightItem = {
@@ -131,7 +142,11 @@ export default function App() {
           />
         )}
         {currentPage === 'ai-insights' && (
-          <AIInsights cartItems={cartItems} />
+          <AIInsights
+            cartItems={cartItems}
+            chatMessages={chatMessages}
+            setChatMessages={setChatMessages}
+          />
         )}
         {currentPage === 'keywords' && <KeywordAnalysis 
           addToCart={addToCart}
@@ -156,6 +171,8 @@ export default function App() {
             {isMiniChatOpen && (
               <MiniChatWindow
                 cartItems={cartItems}
+                chatMessages={chatMessages}
+                setChatMessages={setChatMessages}
                 onClose={() => setIsMiniChatOpen(false)}
                 onNavigateToAI={handleNavigateToAI}
               />
